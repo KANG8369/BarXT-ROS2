@@ -121,22 +121,8 @@ sudo usermod -aG i2c $USER
 
 Log out and back in after changing groups.
 
-### 3. Confirm the sensor address
 
-Use read mode detection because some adapters do not support SMBus quick write
-detection.
-
-```bash
-sudo i2cdetect -r -y 7
-```
-
-The sensor should appear at address `0x40`.
-
-```text
-40: 40 -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
-```
-
-### 4. Build the package
+### 3. Build the package
 
 From the workspace root:
 
@@ -145,7 +131,7 @@ colcon build --packages-select barxt_ros2
 source install/setup.bash
 ```
 
-### 5. Run the BarXT node
+### 4. Run the BarXT node
 
 Run with the tested hardware settings:
 
@@ -168,7 +154,7 @@ ros2 launch barxt_ros2 barxt.launch.py \
   fluid_density_kg_m3:=1025.0
 ```
 
-### 6. Check published topics
+### 5. Check published topics
 
 In another terminal, source the workspace:
 
@@ -205,27 +191,6 @@ colcon test --packages-select barxt_ros2
 colcon test-result --verbose
 ```
 
-### Troubleshooting
-
-If `/dev/i2c-7` does not exist, confirm that the hardware I2C controller is
-enabled and exposed by the OS.
-
-If `i2cdetect -y 7` does not show `0x40`, retry with read mode:
-
-```bash
-sudo i2cdetect -r -y 7
-```
-
-If the node fails with permission errors, check device ownership and group
-membership:
-
-```bash
-ls -l /dev/i2c-7
-groups
-```
-
-If no pressure, temperature, or depth topic appears, make sure the node is
-still running and that the workspace was sourced in both terminals.
 
 ## Tests
 
