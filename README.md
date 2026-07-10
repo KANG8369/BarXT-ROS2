@@ -78,6 +78,155 @@ Run with seawater density:
 ros2 launch barxt_ros2 barxt.launch.py fluid_density_kg_m3:=1025.0
 ```
 
+## Hardware Run Guide
+
+This guide assumes the BarXT sensor is connected to Linux I2C bus 7 and uses
+the default Keller LD I2C address `0x40`.
+
+### 1. Prepare the ROS2 environment
+
+Source ROS2 first. Adjust the path if your ROS2 installation is different.
+
+```bash
+source /opt/ros/humble/setup.bash
+```
+
+If this workspace depends on a custom ROS2 build, source that environment
+instead.
+
+```bash
+source ~/ros2_humble/install/setup.bash
+```
+
+### 2. Check I2C access
+
+Confirm the I2C device node exists.
+
+```bash
+ls -l /dev/i2c-7
+```
+
+Expected form:
+
+```text
+crw-rw---- 1 root i2c ... /dev/i2c-7
+```
+
+If the device is owned by the `i2c` group, add the runtime user to that group
+or run the hardware test with appropriate privileges.
+
+```bash
+sudo usermod -aG i2c $USER
+```
+
+Log out and back in after changing groups.
+
+### 3. Confirm the sensor address
+
+Use read mode detection because some adapters do not support SMBus quick write
+detection.
+
+```bash
+sudo i2cdetect -r -y 7
+```
+
+The sensor should appear at address `0x40`.
+
+```text
+40: 40 -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+```
+
+### 4. Build the package
+
+From the workspace root:
+
+```bash
+colcon build --packages-select barxt_ros2
+source install/setup.bash
+```
+
+### 5. Run the BarXT node
+
+Run with the tested hardware settings:
+
+```bash
+ros2 launch barxt_ros2 barxt.launch.py i2c_bus:=7 i2c_address:=0x40
+```
+
+For a lower-rate smoke test:
+
+```bash
+ros2 launch barxt_ros2 barxt.launch.py i2c_bus:=7 i2c_address:=0x40 publish_rate_hz:=2.0
+```
+
+For seawater depth conversion:
+
+```bash
+ros2 launch barxt_ros2 barxt.launch.py \
+  i2c_bus:=7 \
+  i2c_address:=0x40 \
+  fluid_density_kg_m3:=1025.0
+```
+
+### 6. Check published topics
+
+In another terminal, source the workspace:
+
+```bash
+source install/setup.bash
+```
+
+Then check the output topics:
+
+```bash
+ros2 topic echo /barxt/pressure --once
+ros2 topic echo /barxt/temperature --once
+ros2 topic echo /barxt/depth --once
+```
+
+Expected topic types:
+
+```bash
+ros2 topic list -t
+```
+
+```text
+/barxt/pressure [sensor_msgs/msg/FluidPressure]
+/barxt/temperature [sensor_msgs/msg/Temperature]
+/barxt/depth [std_msgs/msg/Float32]
+```
+
+### 7. Run tests
+
+Hardware-free tests use mock I2C data:
+
+```bash
+colcon test --packages-select barxt_ros2
+colcon test-result --verbose
+```
+
+### Troubleshooting
+
+If `/dev/i2c-7` does not exist, confirm that the hardware I2C controller is
+enabled and exposed by the OS.
+
+If `i2cdetect -y 7` does not show `0x40`, retry with read mode:
+
+```bash
+sudo i2cdetect -r -y 7
+```
+
+If the node fails with permission errors, check device ownership and group
+membership:
+
+```bash
+ls -l /dev/i2c-7
+groups
+```
+
+If no pressure, temperature, or depth topic appears, make sure the node is
+still running and that the workspace was sourced in both terminals.
+
 ## Tests
 
 Hardware-free tests use mock I2C data:
