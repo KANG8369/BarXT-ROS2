@@ -69,6 +69,32 @@ docker run ... --device=/dev/i2c-1 ...
 The default Raspberry Pi 40-pin I2C bus is `/dev/i2c-1`. Do not use the
 example bus number below unless your platform actually exposes that device.
 
+## Raspberry Pi I2C Wiring and Bus Check
+
+Before starting the ROS node, confirm that the BarXT is connected to the
+Raspberry Pi's default 40-pin I2C bus. With the Raspberry Pi powered off,
+wire the sensor as follows:
+
+| BarXT wire | Raspberry Pi 40-pin header |
+| --- | --- |
+| Red (Vin) | Physical pin 1, 3.3 V |
+| Black (GND) | Physical pin 6, GND |
+| White (SDA) | Physical pin 3, GPIO2 / SDA1 |
+| Green (SCL) | Physical pin 5, GPIO3 / SCL1 |
+
+After booting, check which I2C device nodes are available and scan the bus
+that the sensor is physically connected to. On the default Raspberry Pi
+header wiring above, the expected bus is `1` and the BarXT address is `0x40`:
+
+```bash
+ls -l /dev/i2c-*
+sudo i2cdetect -y 1
+```
+
+Only run the node after `i2cdetect` shows `40`. If the sensor is deliberately
+wired to a different Linux I2C bus, replace `1` with that bus number in both
+the scan command and the `i2c_bus` launch parameter.
+
 Build and source the workspace:
 
 ```bash
