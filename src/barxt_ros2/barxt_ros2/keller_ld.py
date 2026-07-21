@@ -132,13 +132,19 @@ class KellerLD:
     def _read_register_word(self, register: int) -> int:
         # Keller LD는 먼저 읽고 싶은 register 주소를 1 byte write로 지정한 뒤,
         # 이어서 status byte + 16-bit register data 총 3 bytes를 읽는 방식이다.
+        # EEPROM register 명령 사이에도 최소 1 ms의 idle 시간을 둬야 한다.
+        # 이는 Keller의 공식 Python reference driver와 동일한 순서이며, 연속
+        # write에서 NACK/Remote I/O error가 나는 것을 막는다.
+        time.sleep(0.001)
         self._bus.write_byte(self.address, register)
         time.sleep(0.001)
         data = self._bus.read_i2c_block_data(self.address, 0, 3)
         if len(data) != 3:
             raise KellerLDError(f"expected 3 bytes from register 0x{register:02x}")
-        # register read에서도 status byte를 검사해 command mode나 checksum 오류를 빠르게 잡는다.
-        self._validate_status(data[0])
+        # EEPROM register read의 응답은 정상 측정 상태(00) 외에 command mode(01)
+        # 로 올 수 있다. command mode는 이 요청에서는 정상이며, reserved mode와
+        # checksum/framing 오류만 거부한다.
+        self._validate_status(data[0], allow_command_mode=True)
         return data[1] << 8 | data[2]
 
     @staticmethod
@@ -194,7 +200,7 @@ class KellerLD:
         return ((raw_temperature >> 4) - 24) * 0.05 - 50
 
     @staticmethod
-    def _validate_status(status: int) -> None:
+    def _validate_status(status: int, *, allow_command_mode: bool = False) -> None:
         # Keller LD response status must start with 0b01.  Without this check,
         # a bus held low (0x00) or an otherwise malformed response can be
         # mistaken for normal-mode sensor data.
@@ -203,10 +209,10 @@ class KellerLD:
             raise KellerLDStatusError(
                 f"invalid status framing {framing:02b}, expected 01"
             )
-        # status byte의 mode bit[4:3]가 0이면 normal mode이다.
-        # 다른 값이면 command/reserved mode로 판단해 해당 샘플을 사용하지 않는다.
+        # 측정 데이터의 mode bit[4:3]는 0(normal mode)이어야 한다. EEPROM
+        # register read에서는 mode 1(command mode)도 Keller 프로토콜상 허용된다.
         mode = (status & (0b11 << 3)) >> 3
-        if mode != 0:
+        if mode != 0 and not (allow_command_mode and mode == 1):
             raise KellerLDStatusError(f"invalid status mode {mode}, expected 0")
         # bit 2가 set이면 센서 내부 memory checksum 오류이다.
         if status & (1 << 2):

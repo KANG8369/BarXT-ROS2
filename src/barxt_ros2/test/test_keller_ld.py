@@ -59,8 +59,9 @@ def test_read_success_parses_pressure_and_temperature():
     assert sensor.temperature() == pytest.approx(25.0)
 
 
-def test_invalid_mode_status_raises():
-    bus = MockBus([[0b01001000, 0, 1]])
+def test_reserved_mode_status_raises_on_register_read():
+    # Mode 2 is reserved, including while the EEPROM is being read.
+    bus = MockBus([[0b01010000, 0, 1]])
     sensor = KellerLD(bus=bus, conversion_delay_s=0.0)
 
     with pytest.raises(KellerLDStatusError, match="invalid status mode"):
@@ -88,6 +89,14 @@ def test_invalid_status_framing_raises():
 
     with pytest.raises(KellerLDStatusError, match="status framing"):
         sensor.init()
+
+
+def test_command_mode_status_is_allowed_on_register_read():
+    reads = init_reads()
+    reads[0][0] = 0b01001000  # command mode is valid for EEPROM register replies
+    sensor = KellerLD(bus=MockBus(reads), conversion_delay_s=0.0)
+
+    assert sensor.init()
 
 
 def test_reserved_pressure_mode_raises():
