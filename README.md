@@ -114,6 +114,57 @@ Run with seawater density:
 ros2 launch barxt_ros2 barxt.launch.py fluid_density_kg_m3:=1025.0
 ```
 
+## Combined BarXT + MicroStrain IMU Launch
+
+`sensors.launch.py` starts this package's BarXT node and the official
+`microstrain_inertial_driver` in the same ROS 2 graph. It is intended for a
+Raspberry Pi where the BarXT is on I2C bus 1 and a 3DM-GV7-INS is available
+inside the container at the configured USB path.
+
+The container must be created with both device mappings:
+
+```bash
+docker run ... --device=/dev/i2c-1 --device=/dev/ttyACM0 \
+  -v /dev/serial/by-id:/dev/serial/by-id:ro ...
+```
+
+Install the MicroStrain driver in that container, then build this package:
+
+```bash
+apt update
+apt install -y ros-humble-microstrain-inertial-driver
+cd /ws
+colcon build --packages-select barxt_ros2
+source /opt/ros/humble/setup.bash
+source install/setup.bash
+```
+
+Create an IMU parameter YAML whose `port` uses the stable
+`/dev/serial/by-id/...` path. For the Pi setup used in this project, the file
+is `/ws/config/gv7_imu.yaml`; pass another path with `imu_params_file:=...`.
+The GV7-INS configuration must use `filter_pps_source: 4` when no external PPS
+is connected.
+
+Run both sensor nodes:
+
+```bash
+ros2 launch barxt_ros2 sensors.launch.py
+```
+
+For seawater depth conversion:
+
+```bash
+ros2 launch barxt_ros2 sensors.launch.py fluid_density_kg_m3:=1025.0
+```
+
+Verify the outputs in another sourced terminal:
+
+```bash
+ros2 topic hz /imu/data
+ros2 topic echo /barxt/pressure --once
+ros2 topic echo /barxt/depth --once
+```
+
 ## Hardware Run Guide
 
 This guide assumes the BarXT sensor is connected to Linux I2C bus 1 and uses
