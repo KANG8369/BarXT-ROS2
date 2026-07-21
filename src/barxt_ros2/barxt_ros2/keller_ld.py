@@ -112,6 +112,8 @@ class KellerLD:
         # 이 값은 이후 pressure offset 선택에 필요하다.
         scaling0 = self._read_register_word(0x12)
         p_mode_id = scaling0 & 0b11
+        if p_mode_id >= len(self.P_MODES):
+            raise KellerLDError(f"unsupported pressure mode id {p_mode_id}")
         self.p_mode = self.P_MODES[p_mode_id]
         self.set_reference_pressure(self.P_MODE_OFFSETS[p_mode_id])
         # Keller 레퍼런스 드라이버와 동일한 bit mask로 calibration date를 분리한다.
@@ -193,6 +195,14 @@ class KellerLD:
 
     @staticmethod
     def _validate_status(status: int) -> None:
+        # Keller LD response status must start with 0b01.  Without this check,
+        # a bus held low (0x00) or an otherwise malformed response can be
+        # mistaken for normal-mode sensor data.
+        framing = (status >> 6) & 0b11
+        if framing != 0b01:
+            raise KellerLDStatusError(
+                f"invalid status framing {framing:02b}, expected 01"
+            )
         # status byte의 mode bit[4:3]가 0이면 normal mode이다.
         # 다른 값이면 command/reserved mode로 판단해 해당 샘플을 사용하지 않는다.
         mode = (status & (0b11 << 3)) >> 3

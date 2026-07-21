@@ -53,11 +53,21 @@ Electrical and physical requirements such as supply voltage, current, connector,
 
 ## Usage
 
-Install the platform I2C dependency on the target computer:
+Install the platform I2C dependency in the environment that runs the node:
 
 ```bash
 sudo apt-get install python3-smbus
 ```
+
+When the node runs in a Docker container, install the dependency inside that
+container and pass the host I2C device through when creating it:
+
+```bash
+docker run ... --device=/dev/i2c-1 ...
+```
+
+The default Raspberry Pi 40-pin I2C bus is `/dev/i2c-1`. Do not use the
+example bus number below unless your platform actually exposes that device.
 
 Build and source the workspace:
 
@@ -80,7 +90,7 @@ ros2 launch barxt_ros2 barxt.launch.py fluid_density_kg_m3:=1025.0
 
 ## Hardware Run Guide
 
-This guide assumes the BarXT sensor is connected to Linux I2C bus 7 and uses
+This guide assumes the BarXT sensor is connected to Linux I2C bus 1 and uses
 the default Keller LD I2C address `0x40`.
 
 ### 1. Prepare the ROS2 environment
@@ -103,13 +113,13 @@ source ~/ros2_humble/install/setup.bash
 Confirm the I2C device node exists.
 
 ```bash
-ls -l /dev/i2c-7
+ls -l /dev/i2c-1
 ```
 
 Expected form:
 
 ```text
-crw-rw---- 1 root i2c ... /dev/i2c-7
+crw-rw---- 1 root i2c ... /dev/i2c-1
 ```
 
 If the device is owned by the `i2c` group, add the runtime user to that group
@@ -136,20 +146,20 @@ source install/setup.bash
 Run with the tested hardware settings:
 
 ```bash
-ros2 launch barxt_ros2 barxt.launch.py i2c_bus:=7 i2c_address:=0x40
+ros2 launch barxt_ros2 barxt.launch.py i2c_bus:=1 i2c_address:=0x40
 ```
 
 For a lower-rate smoke test:
 
 ```bash
-ros2 launch barxt_ros2 barxt.launch.py i2c_bus:=7 i2c_address:=0x40 publish_rate_hz:=2.0
+ros2 launch barxt_ros2 barxt.launch.py i2c_bus:=1 i2c_address:=0x40 publish_rate_hz:=2.0
 ```
 
 For seawater depth conversion:
 
 ```bash
 ros2 launch barxt_ros2 barxt.launch.py \
-  i2c_bus:=7 \
+  i2c_bus:=1 \
   i2c_address:=0x40 \
   fluid_density_kg_m3:=1025.0
 ```
@@ -182,7 +192,7 @@ ros2 topic list -t
 /barxt/depth [std_msgs/msg/Float32]
 ```
 
-### 7. Run tests
+### 6. Run tests
 
 Hardware-free tests use mock I2C data:
 

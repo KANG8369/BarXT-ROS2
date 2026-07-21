@@ -92,10 +92,7 @@ def test_bar3xt_pressure_boundaries_are_valid(pressure_bar):
 
     result = validator.validate(measurement(pressure_bar=pressure_bar))
 
-    if pressure_bar == 3.0 and result.errors:
-        assert all("depth" in error for error in result.errors)
-    else:
-        assert result.valid
+    assert result.valid
 
 
 @pytest.mark.parametrize("pressure_bar", [-0.1, 3.1])
@@ -124,4 +121,5 @@ def test_depth_outside_bar3xt_range_is_rejected():
     result = validator.validate(measurement(pressure_bar=3.2))
 
     assert not result.valid
-    assert any("depth" in error for error in result.errors)
+    assert any("pressure" in error for error in result.errors)
+    assert any("calculated depth" in warning for warning in result.warnings)

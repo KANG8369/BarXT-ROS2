@@ -144,11 +144,12 @@ class BarXTValidator:
                 f"{spec.pressure_min_bar:.1f}-{spec.pressure_max_bar:.1f} bar"
             )
 
-        # 압력은 정격 안이어도 surface pressure나 fluid density 설정에 따라 계산 수심이
-        # 모델 수심 범위를 넘을 수 있으므로 별도로 검사한다.
+        # 수심은 pressure, surface pressure, fluid density에서 계산한 파생값이다.
+        # 따라서 정격 압력 안의 실제 샘플을 밀도/대기압 설정 오차만으로 버리지 않도록,
+        # 모델의 명목 수심 범위 이탈은 경고로만 보고한다.
         if not spec.depth_min_m <= depth_m <= spec.depth_max_m:
-            errors.append(
-                f"depth {depth_m:.6f} m outside "
+            warnings.append(
+                f"calculated depth {depth_m:.6f} m outside nominal "
                 f"{spec.depth_min_m:.1f}-{spec.depth_max_m:.1f} m"
             )
 
